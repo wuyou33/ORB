@@ -38,7 +38,7 @@ namespace ORB_SLAM2
 LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale):
     mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
-    mbStopGBA(false), mbFixScale(bFixScale)
+    mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0)
 {
     SetAdvancedParameters();
 }
@@ -408,15 +408,15 @@ void LoopClosing::CorrectLoop()
     mpLocalMapper->RequestStop();
 
     // If a Global Bundle Adjustment is running, abort it
-    if(isRunningGBA())
     {
+        unique_lock<mutex> lock(mMutexGBA);
         mbStopGBA = true;
-
-        while(!isFinishedGBA())
-            usleep(5000);
-
-        mpThreadGBA->join();
-        delete mpThreadGBA;
+        mnFullBAIdx++;
+        if(mpThreadGBA)
+        {
+            mpThreadGBA->detach();
+            delete mpThreadGBA;
+        }
     }
 
     // Wait until Local Mapping has effectively stopped
@@ -568,10 +568,13 @@ void LoopClosing::CorrectLoop()
     mpCurrentKF->AddLoopEdge(mpMatchedKF);
 
     // Launch a new thread to perform Global Bundle Adjustment
-    mbRunningGBA = true;
-    mbFinishedGBA = false;
-    mbStopGBA = false;
-    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this,mpCurrentKF->mnId);
+    if(mnIterationsFullBA>0)
+    {
+        mbRunningGBA = true;
+        mbFinishedGBA = false;
+        mbStopGBA = false;
+        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this,mpCurrentKF->mnId);
+    }
 
     // Loop closed. Release Local Mapping.
     mpLocalMapper->Release();    
@@ -643,7 +646,8 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
 {
     cout << "Starting Global Bundle Adjustment" << endl;
 
-    Optimizer::GlobalBundleAdjustemnt(mpMap,20,&mbStopGBA,nLoopKF,false);
+    int idx =  mnFullBAIdx;
+    Optimizer::GlobalBundleAdjustemnt(mpMap,mnIterationsFullBA,&mbStopGBA,nLoopKF,false);
 
     // Update all MapPoints and KeyFrames
     // Local Mapping was active during BA, that means that there might be new keyframes
@@ -652,6 +656,8 @@ void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF)
     {
         unique_lock<mutex> lock(mMutexGBA);
 
+        if(idx!=mnFullBAIdx)
+            return;
 
         if(!mbStopGBA)
         {
@@ -769,16 +775,19 @@ void LoopClosing::SetAdvancedParameters()
 {
     mnThCovisibility = 3;
     mnMinInliersSim3 = 40;
+    mnIterationsFullBA = 10;
 }
 
-void LoopClosing::SetAdvancedParameters(const int &ThCovisibility, const int &MinInliersSim3)
+void LoopClosing::SetAdvancedParameters(const int &ThCovisibility, const int &MinInliersSim3, const int &IterationsFullBA)
 {
     mnThCovisibility = ThCovisibility;
     mnMinInliersSim3 = MinInliersSim3;
+    mnIterationsFullBA = IterationsFullBA;
 
     cout << "Loop Closing:" << endl;
     cout << "- Th Covisibility Consistency: " << mnThCovisibility << endl;
     cout << "- Min. Inliers Sim3: " << mnMinInliersSim3 << endl;
+    cout << "- Full BA Iterations: " << mnIterationsFullBA << endl;
 }
 
 } //namespace ORB_SLAM

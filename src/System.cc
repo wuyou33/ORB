@@ -136,7 +136,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
                 fsAdvanced["LocalMapping.MinParallaxMP"],fsAdvanced["LocalMapping.ThObsKF"],
                 fsAdvanced["LocalMapping.ThRedundantKF"]);
 
-        mpLoopCloser->SetAdvancedParameters(fsAdvanced["LoopClosing.ThCovisibility"],fsAdvanced["LoopClosing.MinInliers"]);
+        mpLoopCloser->SetAdvancedParameters(fsAdvanced["LoopClosing.ThCovisibility"],fsAdvanced["LoopClosing.MinInliers"],
+                fsAdvanced["LoopClosing.IterationsFullBA"]);
 
         ORBmatcher::TH_LOW = fsAdvanced["ORB.ThLow"];
         ORBmatcher::TH_HIGH = fsAdvanced["ORB.ThHigh"];

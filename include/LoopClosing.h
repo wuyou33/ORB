@@ -82,7 +82,7 @@ public:
 
     //Advanced Parameters (They can be changed from file, see System constructor)
     void SetAdvancedParameters();
-    void SetAdvancedParameters(const int &ThCovisibility, const int &MinInliersSim3);
+    void SetAdvancedParameters(const int &ThCovisibility, const int &MinInliersSim3, const int &IterationsFullBA);
 
 protected:
 
@@ -144,9 +144,12 @@ protected:
     // Fix scale in the stereo/RGB-D case
     bool mbFixScale;
 
+    int mnFullBAIdx;
+
     //Advanced Parameters (They can be changed from file, see System constructor)
     int mnThCovisibility;
     int mnMinInliersSim3;
+    int mnIterationsFullBA;
 };
 
 } //namespace ORB_SLAM

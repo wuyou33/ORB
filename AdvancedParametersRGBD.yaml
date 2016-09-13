@@ -44,3 +44,4 @@ LocalMapping.ThRedundantKF: 0.9 #0-1.0f. Ratio of points in a keyframe that must
 #------------------------
 LoopClosing.ThCovisibility: 3 #Number of keyframes. A loop has to be consistently detected during 3 consecutive keyframes insertions.
 LoopClosing.MinInliers: 40 #Number of inliers. Min. inliers for the geometric transform to validate a loop (Stereo, RGB-D -> SE3, Mono -> Sim3).
+LoopClosing.IterationsFullBA: 10 #Number of iterations. After a loop closure the system performs a Full BA in a parallel thread. 0 iterations will disable Full BA.
