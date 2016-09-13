@@ -209,3 +209,14 @@ This is the default mode. The system runs in parallal three threads: Tracking, L
 ### Localization Mode
 This mode can be used when you have a good map of your working area. In this mode the Local Mapping and Loop Closing are deactivated. The system localizes the camera in the map (which is no longer updated), using relocalization if needed. 
 
+#10. Advanced Settings
+You can change some internal parameters by passing to the System constructor an AdvanceParameters.yaml file (default files for stereo, RGBD and mono are provided). Default values were selected by running the system in many datasets, maximizing robustness and accuracy. You should only change these values if you are getting bad results in your dataset. Some examples:
+##### - [stereo or RGBD] Too many keyframes are inserted, even when an area has been mapped several times.
+Reduce `InsertionKF.ThRatioMapVO`
+##### - [mono] Scale gets very tiny after a rotation.
+Increase `LocalMapping.MinMeanParallaxKF` and `LocalMapping.MinParallaxMP`. This will delay creating new points until they are seen from a wider baseline. However this can reduce the agility to expand the map, and tracking might get lost.
+##### - [stereo or RGBD] I get many points around contours that seem to be badly triangulated.
+Increase `LocalMapping.ThObsKF`. 4 should be ok in most cases.
+##### - [any sensor] I get a wrong loop closure.
+Increase `LoopClosing.ThCovisibility` and/or  `LoopClosing.MinInliers`.
+
