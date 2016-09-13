@@ -72,6 +72,12 @@ public:
         return mlNewKeyFrames.size();
     }
 
+    //Advanced Parameters (They can be changed from file, see System constructor)
+    void SetAdvancedParameters();
+    void SetAdvancedParameters(const float &ThFoundRatioMP, const int &ThRecentMP, const int &CheckAfter,
+                               const int &ThMinObsMP, const int &TriangulateKFs, const float &MinMeanParallaxKF,
+                               const float &MinParallaxMP, const int &ThObsKF, const float &ThRedundantKF);
+
 protected:
 
     bool CheckNewKeyFrames();
@@ -121,6 +127,17 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+
+    //Advanced Parameters (They can be changed from file, see System constructor)
+    float mfThFoundRatioMP;
+    int mnThRecentMP;
+    int mnCheckAfter;
+    int mnThMinObsMP;
+    int mnTriangulateKFs;
+    float mfMinMeanParallaxKF;
+    float mfMinParallaxMP;
+    int mnThObsKF;
+    float mfThRedundantKF;
 };
 
 } //namespace ORB_SLAM

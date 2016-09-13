@@ -80,6 +80,10 @@ public:
 
     bool isFinished();
 
+    //Advanced Parameters (They can be changed from file, see System constructor)
+    void SetAdvancedParameters();
+    void SetAdvancedParameters(const int &ThCovisibility, const int &MinInliersSim3);
+
 protected:
 
     bool CheckNewKeyFrames();
@@ -139,6 +143,10 @@ protected:
 
     // Fix scale in the stereo/RGB-D case
     bool mbFixScale;
+
+    //Advanced Parameters (They can be changed from file, see System constructor)
+    int mnThCovisibility;
+    int mnMinInliersSim3;
 };
 
 } //namespace ORB_SLAM

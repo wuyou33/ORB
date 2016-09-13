@@ -32,6 +32,7 @@ LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
 {
+    SetAdvancedParameters();
 }
 
 void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
@@ -173,13 +174,6 @@ void LocalMapping::MapPointCulling()
     list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
     const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
 
-    int nThObs;
-    if(mbMonocular)
-        nThObs = 2;
-    else
-        nThObs = 3;
-    const int cnThObs = nThObs;
-
     while(lit!=mlpRecentAddedMapPoints.end())
     {
         MapPoint* pMP = *lit;
@@ -187,17 +181,17 @@ void LocalMapping::MapPointCulling()
         {
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if(pMP->GetFoundRatio()<0.25f )
+        else if(pMP->GetFoundRatio()<mfThFoundRatioMP)
         {
             pMP->SetBadFlag();
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=2 && pMP->Observations()<=cnThObs)
+        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=mnCheckAfter && pMP->Observations()<=mnThMinObsMP)
         {
             pMP->SetBadFlag();
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=3)
+        else if(((int)nCurrentKFid-(int)pMP->mnFirstKFid)>=mnThRecentMP)
             lit = mlpRecentAddedMapPoints.erase(lit);
         else
             lit++;
@@ -207,9 +201,7 @@ void LocalMapping::MapPointCulling()
 void LocalMapping::CreateNewMapPoints()
 {
     // Retrieve neighbor keyframes in covisibility graph
-    int nn = 10;
-    if(mbMonocular)
-        nn=20;
+    const int nn = mnTriangulateKFs;
     const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
     ORBmatcher matcher(0.6,false);
@@ -233,6 +225,9 @@ void LocalMapping::CreateNewMapPoints()
 
     int nnew=0;
 
+    const float thTanParallaxKF = tan(mfMinMeanParallaxKF*CV_PI/360);
+    const float thCosParallaxMP = cos(mfMinParallaxMP*CV_PI/180);
+
     // Search matches with epipolar restriction and triangulate
     for(size_t i=0; i<vpNeighKFs.size(); i++)
     {
@@ -254,9 +249,9 @@ void LocalMapping::CreateNewMapPoints()
         else
         {
             const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-            const float ratioBaselineDepth = baseline/medianDepthKF2;
+            const float ratioBaselineDepth = 0.5f*baseline/medianDepthKF2;
 
-            if(ratioBaselineDepth<0.01)
+            if(ratioBaselineDepth<thTanParallaxKF)
                 continue;
         }
 
@@ -316,7 +311,7 @@ void LocalMapping::CreateNewMapPoints()
             cosParallaxStereo = min(cosParallaxStereo1,cosParallaxStereo2);
 
             cv::Mat x3D;
-            if(cosParallaxRays<cosParallaxStereo && cosParallaxRays>0 && (bStereo1 || bStereo2 || cosParallaxRays<0.9998))
+            if(cosParallaxRays<cosParallaxStereo && cosParallaxRays>0 && (bStereo1 || bStereo2 || cosParallaxRays<thCosParallaxMP))
             {
                 // Linear Triangulation Method
                 cv::Mat A(4,4,CV_32F);
@@ -644,10 +639,7 @@ void LocalMapping::KeyFrameCulling()
             continue;
         const vector<MapPoint*> vpMapPoints = pKF->GetMapPointMatches();
 
-        int /*nObs = 2;
-        if(mbMonocular)*/
-            nObs = 3;
-        const int thObs=nObs;
+        const int thObs=mnThObsKF;
         int nRedundantObservations=0;
         int nMPs=0;
         for(size_t i=0, iend=vpMapPoints.size(); i<iend; i++)
@@ -692,7 +684,7 @@ void LocalMapping::KeyFrameCulling()
             }
         }  
 
-        if(nRedundantObservations>0.9*nMPs)
+        if(nRedundantObservations>mfThRedundantKF*nMPs)
             pKF->SetBadFlag();
     }
 }
@@ -757,6 +749,46 @@ bool LocalMapping::isFinished()
 {
     unique_lock<mutex> lock(mMutexFinish);
     return mbFinished;
+}
+
+void LocalMapping::SetAdvancedParameters()
+{
+    mfThFoundRatioMP = 0.25;
+    mnThRecentMP = 3;
+    mnCheckAfter = 2;
+    mnThMinObsMP = 2;
+    mnTriangulateKFs = 10;
+    mfMinMeanParallaxKF = 1.0f;
+    mfMinParallaxMP = 1.0f;
+    mnThObsKF = 3;
+    mfThRedundantKF = 0.9f;
+}
+
+void LocalMapping::SetAdvancedParameters(const float &ThFoundRatioMP, const int &ThRecentMP, const int &CheckAfter,
+                           const int &ThMinObsMP, const int &TriangulateKFs, const float &MinMeanParallaxKF,
+                           const float &MinParallaxMP, const int &ThObsKF, const float &ThRedundantKF)
+{
+    mfThFoundRatioMP = ThFoundRatioMP;
+    mnThRecentMP = ThRecentMP;
+    mnCheckAfter = CheckAfter;
+    mnThMinObsMP = ThMinObsMP;
+    mnTriangulateKFs = TriangulateKFs;
+    mfMinMeanParallaxKF = MinMeanParallaxKF;
+    mfMinParallaxMP = MinParallaxMP;
+    mnThObsKF = ThObsKF;
+    mfThRedundantKF = ThRedundantKF;
+
+    cout << "Local Mapping:" << endl;
+    cout << "- Th Found Ratio MapPoint: " << mfThFoundRatioMP << endl;
+    cout << "- Check MapPoint during : " << mnThRecentMP << " KeyFrames" << endl;
+    cout << "- Check MapPoint Observations after " << mnCheckAfter << " KeyFrames" << endl;
+    cout << "- Th Min Observations MapPoint: " << mnThMinObsMP << endl;
+    cout << "- Triangulate Searching in " << mnTriangulateKFs << " Neighbor KeyFrames" << endl;
+    cout << "- Min Mean Parallax between KeyFrames when Triangulating: " << mfMinMeanParallaxKF << " deg." << endl;
+    cout << "- Min Parallax for New MapPoints: " << mfMinParallaxMP << " deg." << endl;
+    cout << "- Th Redundant Observations: " << mnThObsKF << endl;
+    cout << "- Ratio Redundant Points/ Num. Points to Discard a KeyFrame: " << mfThRedundantKF << endl;
+
 }
 
 } //namespace ORB_SLAM

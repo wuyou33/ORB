@@ -37,11 +37,10 @@ namespace ORB_SLAM2
 
 LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale):
     mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
-    mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
+    mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
     mbStopGBA(false), mbFixScale(bFixScale)
 {
-    mnCovisibilityConsistencyTh = 3;
-    mpMatchedKF = NULL;
+    SetAdvancedParameters();
 }
 
 void LoopClosing::SetTracker(Tracking *pTracker)
@@ -192,7 +191,7 @@ bool LoopClosing::DetectLoop()
                     vCurrentConsistentGroups.push_back(cg);
                     vbConsistentGroup[iG]=true; //this avoid to include the same group more than once
                 }
-                if(nCurrentConsistency>=mnCovisibilityConsistencyTh && !bEnoughConsistent)
+                if(nCurrentConsistency>=mnThCovisibility && !bEnoughConsistent)
                 {
                     mvpEnoughConsistentCandidates.push_back(pCandidateKF);
                     bEnoughConsistent=true; //this avoid to insert the same candidate more than once
@@ -383,7 +382,7 @@ bool LoopClosing::ComputeSim3()
             nTotalMatches++;
     }
 
-    if(nTotalMatches>=40)
+    if(nTotalMatches>=mnMinInliersSim3)
     {
         for(int i=0; i<nInitialCandidates; i++)
             if(mvpEnoughConsistentCandidates[i]!=mpMatchedKF)
@@ -766,5 +765,20 @@ bool LoopClosing::isFinished()
     return mbFinished;
 }
 
+void LoopClosing::SetAdvancedParameters()
+{
+    mnThCovisibility = 3;
+    mnMinInliersSim3 = 40;
+}
+
+void LoopClosing::SetAdvancedParameters(const int &ThCovisibility, const int &MinInliersSim3)
+{
+    mnThCovisibility = ThCovisibility;
+    mnMinInliersSim3 = MinInliersSim3;
+
+    cout << "Loop Closing:" << endl;
+    cout << "- Th Covisibility Consistency: " << mnThCovisibility << endl;
+    cout << "- Min. Inliers Sim3: " << mnMinInliersSim3 << endl;
+}
 
 } //namespace ORB_SLAM

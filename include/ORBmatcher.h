@@ -84,8 +84,8 @@ public:
 
 public:
 
-    static const int TH_LOW;
-    static const int TH_HIGH;
+    static int TH_LOW;
+    static int TH_HIGH;
     static const int HISTO_LENGTH;
 
 

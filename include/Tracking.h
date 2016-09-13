@@ -115,6 +115,13 @@ public:
 
     void Reset();
 
+    //Advanced Parameters (They can be changed from file, see System constructor)
+    void SetAdvancedParameters();
+    void SetAdvancedParameters(const float &InsertionMaxTime, const float &InsertionMinTime, const int &InsertionMinObs,
+                               const float &InsertionThRatioMapVO, const float &InsertionThRatioRef,
+                               const int &InsertionMinInliers, const int &MinMatchesPrediction, const int &MinMatchesMap,
+                               const int &SearchRadiusMotionModel, const int &SearchRadiusMap);
+
 protected:
 
     // Main tracking function. It is independent of the input sensor.
@@ -189,6 +196,7 @@ protected:
     //New KeyFrame rules (according to fps)
     int mMinFrames;
     int mMaxFrames;
+    int mFPS;
 
     // Threshold close/far points
     // Points seen as close by the stereo/RGBD sensor are considered reliable
@@ -214,6 +222,18 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
+
+    //Advanced Parameters (They can be changed from file, see System constructor)    
+    float mfInsertionMaxTime;
+    float mfInsertionMinTime;
+    int mnInsertionMinObs;
+    float mfInsertionThRatioMapVO;
+    float mfInsertionThRatioRef;
+    int mnInsertionMinInliers;
+    int mnMinMatchesPrediction;
+    int mnMinMatchesMap;
+    int mnSearchRadiusMotionModel;
+    int mnSearchRadiusMap;
 };
 
 } //namespace ORB_SLAM

@@ -311,7 +311,7 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
         return false;
 
     // Predict scale in the image
-    const int nPredictedLevel = pMP->PredictScale(dist,mfLogScaleFactor);
+    const int nPredictedLevel = pMP->PredictScale(dist,this);
 
     // Data used by the tracking
     pMP->mbTrackInView = true;

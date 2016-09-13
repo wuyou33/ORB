@@ -82,9 +82,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     if(fps==0)
         fps=30;
 
-    // Max/Min Frames to insert keyframes and to check relocalisation
-    mMinFrames = 0;
-    mMaxFrames = fps;
+    mFPS = fps;
 
     cout << endl << "Camera Parameters: " << endl;
     cout << "- fx: " << fx << endl;
@@ -146,6 +144,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
+    SetAdvancedParameters();
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -766,7 +765,7 @@ bool Tracking::TrackReferenceKeyFrame()
 
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
 
-    if(nmatches<15)
+    if(nmatches<mnMinMatchesPrediction)
         return false;
 
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
@@ -795,7 +794,7 @@ bool Tracking::TrackReferenceKeyFrame()
         }
     }
 
-    return nmatchesMap>=10;
+    return nmatchesMap>=mnMinMatchesPrediction;
 }
 
 void Tracking::UpdateLastFrame()
@@ -877,21 +876,17 @@ bool Tracking::TrackWithMotionModel()
     fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
 
     // Project points seen in previous frame
-    int th;
-    if(mSensor!=System::STEREO)
-        th=15;
-    else
-        th=7;
+    const int th = mnSearchRadiusMotionModel;
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
 
     // If few matches, uses a wider window search
-    if(nmatches<20)
+    if(nmatches<2*mnMinMatchesPrediction)
     {
         fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
         nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,2*th,mSensor==System::MONOCULAR);
     }
 
-    if(nmatches<20)
+    if(nmatches<mnMinMatchesPrediction)
         return false;
 
     // Optimize frame pose with all matches
@@ -920,11 +915,11 @@ bool Tracking::TrackWithMotionModel()
 
     if(mbOnlyTracking)
     {
-        mbVO = nmatchesMap<10;
-        return nmatches>20;
+        mbVO = nmatchesMap<mnMinMatchesPrediction;
+        return nmatches>2*mnMinMatchesPrediction;
     }
 
-    return nmatchesMap>=10;
+    return nmatchesMap>=mnMinMatchesPrediction;
 }
 
 bool Tracking::TrackLocalMap()
@@ -967,7 +962,7 @@ bool Tracking::TrackLocalMap()
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
         return false;
 
-    if(mnMatchesInliers<30)
+    if(mnMatchesInliers<mnMinMatchesMap)
         return false;
     else
         return true;
@@ -990,7 +985,7 @@ bool Tracking::NeedNewKeyFrame()
         return false;
 
     // Tracked MapPoints in the reference keyframe
-    int nMinObs = 3;
+    int nMinObs = mnInsertionMinObs;
     if(nKFs<=2)
         nMinObs=2;
     int nRefMatches = mpReferenceKF->TrackedMapPoints(nMinObs);
@@ -1027,16 +1022,17 @@ bool Tracking::NeedNewKeyFrame()
     const float ratioMap = (float)nMap/fmax(1.0f,nTotal);
 
     // Thresholds
-    float thRefRatio = 0.75f;
+    float thRefRatio = mfInsertionThRatioRef;
     if(nKFs<2)
         thRefRatio = 0.4f;
 
-    if(mSensor==System::MONOCULAR)
-        thRefRatio = 0.9f;
+    /*if(mSensor==System::MONOCULAR)
+        thRefRatio = 0.9f;*/
 
-    float thMapRatio = 0.35f;
+    float thMapRatio = mfInsertionThRatioMapVO;
+
     if(mnMatchesInliers>300)
-        thMapRatio = 0.20f;
+        thMapRatio = 0.6f*thMapRatio;
 
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
     const bool c1a = mCurrentFrame.mnId>=mnLastKeyFrameId+mMaxFrames;
@@ -1045,7 +1041,7 @@ bool Tracking::NeedNewKeyFrame()
     //Condition 1c: tracking is weak
     const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || ratioMap<0.3f) ;
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
-    const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| ratioMap<thMapRatio) && mnMatchesInliers>15);
+    const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| ratioMap<thMapRatio) && mnMatchesInliers>mnInsertionMinInliers);
 
     if((c1a||c1b||c1c)&&c2)
     {
@@ -1195,9 +1191,7 @@ void Tracking::SearchLocalPoints()
     if(nToMatch>0)
     {
         ORBmatcher matcher(0.8);
-        int th = 1;
-        if(mSensor==System::RGBD)
-            th=3;
+        int th = mnSearchRadiusMap;
         // If the camera has been relocalised recently, perform a coarser search
         if(mCurrentFrame.mnId<mnLastRelocFrameId+2)
             th=5;
@@ -1596,6 +1590,66 @@ void Tracking::InformOnlyTracking(const bool &flag)
     mbOnlyTracking = flag;
 }
 
+void Tracking::SetAdvancedParameters()
+{
+    mfInsertionMaxTime = 1.0f;
+    mfInsertionMinTime = 0.0f;
+    mMaxFrames = (float)mFPS/mfInsertionMaxTime;
+    mMinFrames = (float)mFPS/mfInsertionMinTime;
+    mnInsertionMinObs = 3;
+    mfInsertionThRatioMapVO = 0.35;
+
+    if(mSensor!=System::MONOCULAR)
+        mfInsertionThRatioRef = 0.75;
+    else
+        mfInsertionThRatioRef = 0.90;
+
+    mnInsertionMinInliers = 15;
+    mnMinMatchesPrediction = 10;
+    mnMinMatchesMap = 30;
+    mnSearchRadiusMotionModel = 15;
+
+    if(mSensor!=System::RGBD)
+        mnSearchRadiusMap = 1;
+    else
+        mnSearchRadiusMap = 3;
+}
+
+void Tracking::SetAdvancedParameters(const float &InsertionMaxTime, const float &InsertionMinTime, const int &InsertionMinObs,
+                                     const float &InsertionThRatioMapVO, const float &InsertionThRatioRef,
+                                     const int &InsertionMinInliers, const int &MinMatchesPrediction, const int &MinMatchesMap,
+                                     const int &SearchRadiusMotionModel, const int &SearchRadiusMap)
+{
+    mfInsertionMaxTime = InsertionMaxTime;
+    mfInsertionMinTime = InsertionMinTime;
+    mMaxFrames = (float)mFPS/mfInsertionMaxTime;
+    mMinFrames = (float)mFPS/mfInsertionMinTime;
+    mnInsertionMinObs = InsertionMinObs;
+    mfInsertionThRatioMapVO = InsertionThRatioMapVO;
+    mfInsertionThRatioRef = InsertionThRatioRef;
+    mnInsertionMinInliers = InsertionMinInliers;
+    mnMinMatchesPrediction = MinMatchesPrediction;
+    mnMinMatchesMap = MinMatchesMap;
+    mnSearchRadiusMotionModel = SearchRadiusMotionModel;
+    mnSearchRadiusMap = SearchRadiusMap;
+
+    cout << "KeyFrame Insertion:" << endl;
+    cout << "- Max Time: " << mfInsertionMaxTime << " s" << endl;
+    cout << "- Min Time: " << mfInsertionMinTime << " s" << endl;
+    cout << "- Min Observations Ref Points: " << mnInsertionMinObs << endl;
+    if(mSensor!=System::MONOCULAR)
+    {
+        cout << "- Th Ratio Map/VO: " << mfInsertionThRatioMapVO << endl;
+    }
+    cout << "- Th Ratio Map/Ref: " << mfInsertionThRatioRef << endl;
+    cout << "- Min Inliers: " << mnInsertionMinInliers << endl;
+    cout << "Tracking:" << endl;
+    cout << "- Min Matches Prediction: " << mnMinMatchesPrediction << endl;
+    cout << "- Min Matches Local Map: " << mnMinMatchesMap << endl;
+    cout << "- Search Radius Motion Model: " << mnSearchRadiusMotionModel << endl;
+    cout << "- Search Radius Local Map: " << mnSearchRadiusMap << endl;
+
+}
 
 
 } //namespace ORB_SLAM

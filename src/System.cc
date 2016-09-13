@@ -25,12 +25,13 @@
 #include <thread>
 #include <pangolin/pangolin.h>
 #include <iomanip>
+#include "ORBmatcher.h"
 
 namespace ORB_SLAM2
 {
 
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer):mSensor(sensor),mbReset(false),mbActivateLocalizationMode(false),
+               const bool bUseViewer, string strAdvancedSettings):mSensor(sensor),mbReset(false),mbActivateLocalizationMode(false),
         mbDeactivateLocalizationMode(false)
 {
     // Output welcome message
@@ -110,6 +111,44 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     mpLoopCloser->SetTracker(mpTracker);
     mpLoopCloser->SetLocalMapper(mpLocalMapper);
+
+    //Set Advanced Parameters
+    if(!strAdvancedSettings.empty())
+    {
+        cv::FileStorage fsAdvanced(strAdvancedSettings.c_str(), cv::FileStorage::READ);
+        if(!fsAdvanced.isOpened())
+        {
+            cerr << "Failed to open advanced parameters file at: " << strAdvancedSettings << endl;
+            cerr << "Leave blank this argument for default parameters." << endl;
+            exit(-1);
+        }
+
+        cout << endl << "Advanced Parameters:" << endl;
+        mpTracker->SetAdvancedParameters(fsAdvanced["InsertionKF.MaxTime"], fsAdvanced["InsertionKF.MinTime"],
+                fsAdvanced["InsertionKF.MinObsRefPoints"], fsAdvanced["InsertionKF.ThRatioMapVO"],
+                fsAdvanced["InsertionKF.ThRatioRef"], fsAdvanced["InsertionKF.MinInliers"],
+                fsAdvanced["Tracking.MinMatchesPrediction"], fsAdvanced["Tracking.MinMatchesMap"],
+                fsAdvanced["Tracking.SearchRadiusMotionModel"], fsAdvanced["Tracking.SearchRadiusMap"]);
+
+        mpLocalMapper->SetAdvancedParameters(fsAdvanced["LocalMapping.ThFoundRatioMP"],fsAdvanced["LocalMapping.ThRecentMP"],
+                fsAdvanced["LocalMapping.CheckMPAfter"],fsAdvanced["LocalMapping.ThMinObsMP"],
+                fsAdvanced["LocalMapping.TriangulateKFs"],fsAdvanced["LocalMapping.MinMeanParallaxKF"],
+                fsAdvanced["LocalMapping.MinParallaxMP"],fsAdvanced["LocalMapping.ThObsKF"],
+                fsAdvanced["LocalMapping.ThRedundantKF"]);
+
+        mpLoopCloser->SetAdvancedParameters(fsAdvanced["LoopClosing.ThCovisibility"],fsAdvanced["LoopClosing.MinInliers"]);
+
+        ORBmatcher::TH_LOW = fsAdvanced["ORB.ThLow"];
+        ORBmatcher::TH_HIGH = fsAdvanced["ORB.ThHigh"];
+        cout << "ORB Matching" << endl;
+        cout << "- Threshold Low: " << ORBmatcher::TH_LOW << endl;
+        cout << "- Threshold High: " << ORBmatcher::TH_HIGH << endl;
+        cout << endl;
+    }
+    else
+    {
+        cerr << "Advanced parameters set to default values." << endl;
+    }
 }
 
 cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp)

@@ -1,0 +1,46 @@
+%YAML:1.0
+
+# Notice: This are advanced settings. Keep in mind that changing this values can make the system perform very badly or even not work.
+
+# Keyframe Insertion
+#------------------------
+InsertionKF.MaxTime: 1 #Seconds. After this time the tracking will try to insert a keyframe, even if the mapping is busy doing local BA.
+InsertionKF.MinTime: 0 #Seconds. If less than this time has passed since last insertion, tracking wont try to insert a new keyframe.
+InsertionKF.MinObsRefPoints: 3 #Number of observations. Tracked points are compared to points in reference keyframe that have been seen in at least X keyframes. 
+                               #X is the parameter. Stereo observations count twice.
+InsertionKF.ThRatioMapVO: 0.35 #0-1.0f. Tracked MapPoints in Map vs. Tracked MapPoints from last frame (VO). If the ratio is less than this threshold try to insert KF.  
+InsertionKF.ThRatioRef: 0.75 #0-1.0f. Tracked MapPoints in Map vs. MapPoints in reference keyframe. If the ratio is less than this threshold try to insert KF.
+InsertionKF.MinInliers: 15 #Number of keypoints. Min tracked MapPoint in Map to accept a keyframe insertion.
+
+# ORB Matching
+#------------------------
+ORB.ThLow: 50 #0-256. Increase if your image has poor quality
+ORB.ThHigh: 100 #0-256. Increase if you image has poor quality
+
+# Tracking
+#------------------------
+Tracking.MinMatchesPrediction: 10 #No units. Minimum number of inliers to consider tracking sucessful after prediction step
+Tracking.MinMatchesMap: 30 #No untis. Minimum number of inliers to consider tracking sucessful after matching to locap map step
+Tracking.SearchRadiusMotionModel: 15 #Pixels. Search radius when searching for matches when pose is predicted via motion model
+Tracking.SearchRadiusMap: 1 #Pixel. Search radius when searching matches to local map.
+
+# LocalMapping
+#------------------------
+LocalMapping.ThFoundRatioMP: 0.25 #0-1.0f. Ratio of a recent MapPoint being found in a frame vs. times a MapPoint was predicted to be found.
+                                  # If less than this threshold then the recent MapPoint is discarded.
+LocalMapping.ThRecentMP: 3 #Number of Keyframes. After this number of keyframes from MapPoint creation, the MapPoint is considered good if passes all tests.
+LocalMapping.CheckMPAfter: 2 #Number of Keyfames. Check observations after X keyframe from MapPoint creation. This should be lower than ThRecentMP.
+LocalMapping.ThMinObsMP: 3 #Number of observations. After CheckMPAfter keyframes a recent MapPoint must have more observations than threshold to be considered good.
+LocalMapping.TriangulateKFs: 10 #Number of keyframes. Best neighbor keyframes to search new points to triangulate.
+LocalMapping.MinMeanParallaxKF: 1 #Degrees. When triangulating new points, discard neighbor keyframes with a mean parallax (2*atan(baseline/2*mean depth)) lower than threshold.
+                                  # A higher threshold can reduce scale divergence in pure rotations, but reduces agility to expand the map.
+LocalMapping.MinParallaxMP: 1 #Degrees. A new point has to be observed with this minimum parallax to be triangulated, otherwise it is discarded.
+                                  # A higher threshold can reduce scale drift and improve accuracy, but reduces agility to expand the map.
+LocalMapping.ThObsKF: 3 #Number of points. This relates to keyframe culling. Number of observations to consider a point is enough observed.
+LocalMapping.ThRedundantKF: 0.9 #0-1.0f. Ratio of points in a keyframe that must be observed in other ThObsKF keyframes to consider a keyframe redundant. 
+                                #By default, if more than 90% of points have been observed in 3 other keyframes, then the keyframe is considered redundant.
+
+# Loop Closing
+#------------------------
+LoopClosing.ThCovisibility: 3 #Number of keyframes. A loop has to be consistently detected during 3 consecutive keyframes insertions.
+LoopClosing.MinInliers: 40 #Number of inliers. Min. inliers for the geometric transform to validate a loop (Stereo, RGB-D -> SE3, Mono -> Sim3).
