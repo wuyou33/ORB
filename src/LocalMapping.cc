@@ -228,8 +228,6 @@ void LocalMapping::CreateNewMapPoints()
     const float thTanParallaxKF = tan(mfMinMeanParallaxKF*CV_PI/360);
     const float thCosParallaxMP = cos(mfMinParallaxMP*CV_PI/180);
 
-    cout << thTanParallaxKF << endl;
-
     // Search matches with epipolar restriction and triangulate
     for(size_t i=0; i<vpNeighKFs.size(); i++)
     {
