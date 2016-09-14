@@ -32,7 +32,7 @@ LocalMapping.ThRecentMP: 3 #Number of Keyframes. After this number of keyframes 
 LocalMapping.CheckMPAfter: 2 #Number of Keyfames. Check observations after X keyframe from MapPoint creation. This should be lower than ThRecentMP.
 LocalMapping.ThMinObsMP: 2 #Number of observations. After CheckMPAfter keyframes a recent MapPoint must have more observations than threshold to be considered good.
 LocalMapping.TriangulateKFs: 20 #Number of keyframes. Best neighbor keyframes to search new points to triangulate.
-LocalMapping.MinMeanParallaxKF: 1 #Degrees. When triangulating new points, discard neighbor keyframes with a mean parallax (2*atan(baseline/2*mean depth)) lower than threshold.
+LocalMapping.MinMeanParallaxKF: 0.6 #Degrees. When triangulating new points, discard neighbor keyframes with a mean parallax (2*atan(baseline/2*mean depth)) lower than threshold.
                                   # A higher threshold can reduce scale divergence in pure rotations, but reduces agility to expand the map.
 LocalMapping.MinParallaxMP: 1 #Degrees. A new point has to be observed with this minimum parallax to be triangulated, otherwise it is discarded.
                               # A higher threshold can reduce scale drift and improve accuracy, but reduces agility to expand the map.

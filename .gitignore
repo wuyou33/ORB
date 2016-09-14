@@ -15,6 +15,7 @@ Examples/Stereo/stereo_kitti
 FrameTrajectory_KITTI_Format.txt
 FrameTrajectory_TUM_Format.txt
 KeyFrameTrajectory_TUM_Format.txt
+KeyFrameTrajectory.txt
 Vocabulary/ORBvoc.txt
 lib/
 *~

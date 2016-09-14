@@ -159,7 +159,7 @@ void LocalMapping::ProcessNewKeyFrame()
                 }
             }
         }
-    }    
+    }
 
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
@@ -228,6 +228,8 @@ void LocalMapping::CreateNewMapPoints()
     const float thTanParallaxKF = tan(mfMinMeanParallaxKF*CV_PI/360);
     const float thCosParallaxMP = cos(mfMinParallaxMP*CV_PI/180);
 
+    cout << thTanParallaxKF << endl;
+
     // Search matches with epipolar restriction and triangulate
     for(size_t i=0; i<vpNeighKFs.size(); i++)
     {
@@ -249,9 +251,9 @@ void LocalMapping::CreateNewMapPoints()
         else
         {
             const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-            const float ratioBaselineDepth = 0.5f*baseline/medianDepthKF2;
+            const float ratioBaselineDepth = baseline/medianDepthKF2;
 
-            if(ratioBaselineDepth<thTanParallaxKF)
+            if(ratioBaselineDepth<2*thTanParallaxKF)
                 continue;
         }
 
@@ -334,7 +336,7 @@ void LocalMapping::CreateNewMapPoints()
             }
             else if(bStereo1 && cosParallaxStereo1<cosParallaxStereo2)
             {
-                x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);                
+                x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);
             }
             else if(bStereo2 && cosParallaxStereo2<cosParallaxStereo1)
             {
@@ -428,7 +430,7 @@ void LocalMapping::CreateNewMapPoints()
             // Triangulation is succesfull
             MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
 
-            pMP->AddObservation(mpCurrentKeyFrame,idx1);            
+            pMP->AddObservation(mpCurrentKeyFrame,idx1);
             pMP->AddObservation(pKF2,idx2);
 
             mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
@@ -682,7 +684,7 @@ void LocalMapping::KeyFrameCulling()
                     }
                 }
             }
-        }  
+        }
 
         if(nRedundantObservations>mfThRedundantKF*nMPs)
             pKF->SetBadFlag();
@@ -740,7 +742,7 @@ bool LocalMapping::CheckFinish()
 void LocalMapping::SetFinish()
 {
     unique_lock<mutex> lock(mMutexFinish);
-    mbFinished = true;    
+    mbFinished = true;
     unique_lock<mutex> lock2(mMutexStop);
     mbStopped = true;
 }
@@ -756,9 +758,15 @@ void LocalMapping::SetAdvancedParameters()
     mfThFoundRatioMP = 0.25;
     mnThRecentMP = 3;
     mnCheckAfter = 2;
-    mnThMinObsMP = 2;
-    mnTriangulateKFs = 10;
-    mfMinMeanParallaxKF = 1.0f;
+    if(mbMonocular)
+        mnThMinObsMP = 2;
+    else
+        mnThMinObsMP = 3;
+    if(mbMonocular)
+        mnTriangulateKFs = 20;
+    else
+        mnTriangulateKFs = 10;
+    mfMinMeanParallaxKF = 0.6f;
     mfMinParallaxMP = 1.0f;
     mnThObsKF = 3;
     mfThRedundantKF = 0.9f;

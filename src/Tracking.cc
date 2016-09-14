@@ -911,7 +911,7 @@ bool Tracking::TrackWithMotionModel()
             else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
                 nmatchesMap++;
         }
-    }    
+    }
 
     if(mbOnlyTracking)
     {
@@ -1025,9 +1025,6 @@ bool Tracking::NeedNewKeyFrame()
     float thRefRatio = mfInsertionThRatioRef;
     if(nKFs<2)
         thRefRatio = 0.4f;
-
-    /*if(mSensor==System::MONOCULAR)
-        thRefRatio = 0.9f;*/
 
     float thMapRatio = mfInsertionThRatioMapVO;
 
@@ -1594,8 +1591,8 @@ void Tracking::SetAdvancedParameters()
 {
     mfInsertionMaxTime = 1.0f;
     mfInsertionMinTime = 0.0f;
-    mMaxFrames = (float)mFPS/mfInsertionMaxTime;
-    mMinFrames = (float)mFPS/mfInsertionMinTime;
+    mMaxFrames = (float)mFPS*mfInsertionMaxTime;
+    mMinFrames = (float)mFPS*mfInsertionMinTime;
     mnInsertionMinObs = 3;
     mfInsertionThRatioMapVO = 0.35;
 
@@ -1607,7 +1604,11 @@ void Tracking::SetAdvancedParameters()
     mnInsertionMinInliers = 15;
     mnMinMatchesPrediction = 10;
     mnMinMatchesMap = 30;
-    mnSearchRadiusMotionModel = 15;
+
+    if(mSensor!=System::STEREO)
+        mnSearchRadiusMotionModel = 15;
+    else
+        mnSearchRadiusMotionModel = 7;
 
     if(mSensor!=System::RGBD)
         mnSearchRadiusMap = 1;
@@ -1622,8 +1623,8 @@ void Tracking::SetAdvancedParameters(const float &InsertionMaxTime, const float 
 {
     mfInsertionMaxTime = InsertionMaxTime;
     mfInsertionMinTime = InsertionMinTime;
-    mMaxFrames = (float)mFPS/mfInsertionMaxTime;
-    mMinFrames = (float)mFPS/mfInsertionMinTime;
+    mMaxFrames = (float)mFPS*mfInsertionMaxTime;
+    mMinFrames = (float)mFPS*mfInsertionMinTime;
     mnInsertionMinObs = InsertionMinObs;
     mfInsertionThRatioMapVO = InsertionThRatioMapVO;
     mfInsertionThRatioRef = InsertionThRatioRef;
